@@ -380,7 +380,7 @@ def improvedStrategy(mostPopular: Sequence[Tuple[int, Item]], totalRead: int) ->
         A set of items for which to predict True.
     """
 
-    threshold = 0.35  # tuned to be stricter than 0.5 baseline
+    threshold = 0.30  # stricter than 0.5 baseline; improves precision
     cutoff = totalRead * threshold
     return1: Set[Item] = set()
     count = 0
