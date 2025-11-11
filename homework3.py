@@ -511,8 +511,9 @@ def featureCat(
 ) -> List[int]:
     """Compute bag-of-words features for a single datum.
 
-    Counts occurrences of words from the provided dictionary (words), after
-    lowercasing and removing punctuation. Appends an offset term at the end.
+    Produces binary indicators (0/1) for presence of each word from the given
+    vocabulary after lowercasing and removing punctuation. An offset term is
+    appended at the end.
 
     Args:
         datum: A review record with a 'review_text' field.
@@ -531,7 +532,9 @@ def featureCat(
     for w in cleaned.split():
         if w in wordSet:
             idx = wordId[w]
-            feat[idx] += 1
+            # Binary indicator improves conditioning for linear models
+            if feat[idx] == 0:
+                feat[idx] = 1
     feat.append(1)  # offset term
     return feat
 
@@ -573,7 +576,9 @@ def betterFeatures(data: Sequence[Dict[str, object]]) -> List[List[float]]:
     """Produce improved features for category prediction.
 
     Uses a larger dictionary (default 1000 words) and augments with two
-    simple signals: review length (#tokens) and average token length.
+    simple signals: log review length and average token length. Core BOW
+    features are normalized term frequencies (count divided by #tokens),
+    which improves optimization conditioning for Logistic Regression.
     A final offset term is appended.
 
     The vocabulary is initialized on the first call and then reused on
@@ -601,11 +606,19 @@ def betterFeatures(data: Sequence[Dict[str, object]]) -> List[List[float]]:
             if w in _better_wordSet:
                 vec[_better_wordId[w]] += 1.0
 
-        # Add simple length-based features
+        # Normalize term counts by document length (TF); helps convergence
         num_tokens = float(len(tokens))
-        avg_token_len = (sum(len(t) for t in tokens) / num_tokens) if num_tokens > 0 else 0.0
+        if num_tokens > 0.0:
+            inv_len = 1.0 / num_tokens
+            for i in range(len(vec)):
+                if vec[i] > 0.0:
+                    vec[i] *= inv_len
 
-        vec.extend([num_tokens, avg_token_len])
+        # Add simple length-based features (log length is better scaled)
+        avg_token_len = (sum(len(t) for t in tokens) / num_tokens) if num_tokens > 0 else 0.0
+        log_len = math.log1p(num_tokens)
+
+        vec.extend([log_len, avg_token_len])
         vec.append(1.0)  # offset term at the end
         X.append(vec)
     return X
