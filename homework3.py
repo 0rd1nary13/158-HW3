@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Dict, Iterable, List, MutableMapping, Sequence, Set, Tuple
 
 import gzip
+import math
 import random
 import string
 
@@ -380,7 +381,7 @@ def improvedStrategy(mostPopular: Sequence[Tuple[int, Item]], totalRead: int) ->
         A set of items for which to predict True.
     """
 
-    threshold = 0.30  # stricter than 0.5 baseline; improves precision
+    threshold = 0.40  # stricter than 0.5 baseline; balances precision/recall
     cutoff = totalRead * threshold
     return1: Set[Item] = set()
     count = 0
@@ -511,9 +512,8 @@ def featureCat(
 ) -> List[int]:
     """Compute bag-of-words features for a single datum.
 
-    Produces binary indicators (0/1) for presence of each word from the given
-    vocabulary after lowercasing and removing punctuation. An offset term is
-    appended at the end.
+    Counts occurrences of words from the provided dictionary (words), after
+    lowercasing and removing punctuation. Appends an offset term at the end.
 
     Args:
         datum: A review record with a 'review_text' field.
@@ -532,9 +532,7 @@ def featureCat(
     for w in cleaned.split():
         if w in wordSet:
             idx = wordId[w]
-            # Binary indicator improves conditioning for linear models
-            if feat[idx] == 0:
-                feat[idx] = 1
+            feat[idx] += 1
     feat.append(1)  # offset term
     return feat
 
